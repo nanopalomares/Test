@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Property Flag Analyzer · Sydney Apartment Hunt</title>
+<style>
+  :root {
+    --bg-0: #0a0e1a; --bg-1: #111827; --bg-2: #1f2937;
+    --line: #2a3349; --text: #f1f5f9; --muted: #94a3b8;
+    --green: #22c55e; --green-soft: rgba(34,197,94,.15);
+    --red: #ef4444; --red-soft: rgba(239,68,68,.15);
+    --amber: #f59e0b; --amber-soft: rgba(245,158,11,.15);
+    --accent: #818cf8; --accent-2: #c084fc;
+    --grad: linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #f472b6 100%);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(129,140,248,.18), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(244,114,182,.15), transparent 60%),
+      radial-gradient(800px 600px at 50% 110%, rgba(192,132,252,.12), transparent 60%),
+      var(--bg-0);
+    color: var(--text); min-height: 100vh; line-height: 1.5;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 36px 28px 80px; }
+
+  /* Hero */
+  .hero { text-align: center; margin-bottom: 24px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; background: rgba(129,140,248,.12); border: 1px solid rgba(129,140,248,.3); color: #c7d2fe; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 16px; }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+  h1 { font-size: clamp(26px, 4vw, 40px); line-height: 1.1; margin: 0 0 10px; font-weight: 800; letter-spacing: -0.02em; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { color: var(--muted); max-width: 640px; margin: 0 auto; font-size: 15px; }
+
+  /* Property switcher */
+  .switcher { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 28px; }
+  .prop-chip {
+    background: rgba(17,24,39,.7); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 16px; cursor: pointer;
+    transition: all .15s; min-width: 180px;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  }
+  .prop-chip:hover { border-color: var(--accent); }
+  .prop-chip.active { background: rgba(129,140,248,.12); border-color: var(--accent); box-shadow: 0 0 0 2px rgba(129,140,248,.2); }
+  .prop-chip .pc-name { font-size: 13px; font-weight: 700; color: #fff; }
+  .prop-chip .pc-meta { font-size: 11px; color: var(--muted); }
+  .prop-chip .pc-score { font-size: 20px; font-weight: 800; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; margin-top: 4px; }
+
+  /* Listing card */
+  .listing { background: rgba(17,24,39,.75); backdrop-filter: blur(20px); border: 1px solid var(--line); border-radius: 18px; padding: 24px; margin-bottom: 24px; display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; box-shadow: 0 30px 60px -20px rgba(0,0,0,.5); }
+  @media (max-width: 800px) { .listing { grid-template-columns: 1fr; } }
+  .listing h2 { margin: 0 0 4px; font-size: 22px; }
+  .listing .addr { color: var(--muted); font-size: 14px; margin-bottom: 14px; }
+  .listing .price { font-size: 26px; font-weight: 800; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .listing-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .meta-pill { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+  .meta-pill b { color: #fff; font-weight: 700; }
+  .listing-actions { display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+  .listing-actions a { text-align: center; text-decoration: none; background: var(--bg-2); color: var(--text); border: 1px solid var(--line); padding: 12px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; transition: border .15s, color .15s; }
+  .listing-actions a:hover { border-color: var(--accent); color: #fff; }
+  .listing-actions a.primary { background: var(--grad); border: none; color: #fff; box-shadow: 0 10px 30px -10px rgba(192,132,252,.6); }
+
+  .analysis-note { background: rgba(96,165,250,.08); border: 1px solid rgba(96,165,250,.25); border-radius: 12px; padding: 14px 18px; font-size: 13px; color: #bfdbfe; margin-bottom: 24px; display: flex; align-items: flex-start; gap: 12px; }
+  .analysis-note .ico { font-size: 18px; }
+
+  /* Score Dashboard */
+  .score-bar { position: sticky; top: 12px; z-index: 100; background: rgba(10, 14, 26, 0.88); backdrop-filter: blur(18px); border: 1px solid var(--line); border-radius: 18px; padding: 18px 22px; margin-bottom: 32px; display: grid; grid-template-columns: 1.7fr 1fr 1fr 1fr 1fr; gap: 18px; align-items: center; }
+  @media (max-width: 800px) { .score-bar { grid-template-columns: 1fr 1fr; } }
+  .score-main { display: flex; align-items: center; gap: 18px; }
+  .ring { width: 80px; height: 80px; position: relative; flex-shrink: 0; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 8; }
+  .ring .track { stroke: var(--line); }
+  .ring .progress { stroke: url(#ringGrad); stroke-linecap: round; transition: stroke-dashoffset .5s ease; }
+  .ring .label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; }
+  .ring .label .num { font-size: 20px; line-height: 1; }
+  .ring .label .pct { font-size: 11px; color: var(--muted); }
+  .verdict h3 { margin: 0; font-size: 18px; }
+  .verdict p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  .cat-mini { display: flex; flex-direction: column; gap: 6px; }
+  .cat-mini .ttl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+  .cat-mini .val { font-size: 18px; font-weight: 700; }
+  .cat-mini .bar { height: 4px; border-radius: 999px; background: var(--bg-2); overflow: hidden; }
+  .cat-mini .bar > i { display: block; height: 100%; background: var(--grad); width: 0; transition: width .4s; }
+
+  /* Categories */
+  .cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .cat-grid { grid-template-columns: 1fr; } }
+  .cat { background: rgba(17,24,39,.55); border: 1px solid var(--line); border-radius: 18px; padding: 24px; }
+  .cat-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .cat-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; background: rgba(129,140,248,.12); border: 1px solid rgba(129,140,248,.25); }
+  .cat-title { font-size: 18px; font-weight: 700; margin: 0; }
+  .cat-sub { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
+  .cat-progress { margin-left: auto; font-weight: 700; font-size: 16px; }
+
+  /* Criterion */
+  .crit { padding: 14px 0; border-top: 1px dashed rgba(255,255,255,.06); }
+  .crit:first-of-type { border-top: none; padding-top: 4px; }
+  .crit-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .crit-name { font-weight: 600; font-size: 14px; flex: 1; min-width: 200px; }
+  .weight-chip { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: rgba(129,140,248,.15); color: #c7d2fe; }
+  .verdict-chip { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
+  .vc-verify { background: rgba(96,165,250,.18); color: #93c5fd; }
+  .reason { color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.45; }
+  .reason a { color: #a5b4fc; text-decoration: none; }
+  .reason a:hover { text-decoration: underline; }
+  .toggle-row { margin-top: 10px; display: flex; gap: 4px; background: var(--bg-2); padding: 4px; border-radius: 10px; }
+  .toggle-row button { flex: 1; background: transparent; border: none; color: var(--muted); padding: 8px 6px; font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer; transition: all .15s; }
+  .toggle-row button:hover { color: var(--text); }
+  .toggle-row button[data-state="0"].active { background: var(--red-soft); color: var(--red); }
+  .toggle-row button[data-state="1"].active { background: var(--red-soft); color: var(--red); opacity: .8; }
+  .toggle-row button[data-state="2"].active { background: var(--amber-soft); color: var(--amber); }
+  .toggle-row button[data-state="3"].active { background: var(--green-soft); color: var(--green); opacity: .8; }
+  .toggle-row button[data-state="4"].active { background: var(--green-soft); color: var(--green); }
+
+  /* Flag summary */
+  .summary { margin-top: 32px; background: rgba(17,24,39,.65); border: 1px solid var(--line); border-radius: 18px; padding: 28px; }
+  .summary h2 { margin: 0 0 18px; font-size: 22px; display: flex; align-items: center; gap: 10px; }
+  .flags-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+  @media (max-width: 800px) { .flags-grid { grid-template-columns: 1fr; } }
+  .flag-col { background: var(--bg-1); border-radius: 14px; padding: 18px; border: 1px solid var(--line); }
+  .flag-col.green { border-color: rgba(34,197,94,.3); background: rgba(34,197,94,.05); }
+  .flag-col.red { border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.05); }
+  .flag-col.verify { border-color: rgba(96,165,250,.3); background: rgba(96,165,250,.05); }
+  .flag-col h4 { margin: 0 0 12px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .flag-col.green h4 { color: var(--green); }
+  .flag-col.red h4 { color: var(--red); }
+  .flag-col.verify h4 { color: #93c5fd; }
+  .flag-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .flag-list li { font-size: 13px; padding: 8px 12px; background: rgba(0,0,0,.25); border-radius: 8px; display: flex; justify-content: space-between; gap: 10px; }
+  .flag-list li .impact { font-size: 11px; font-weight: 700; opacity: .7; white-space: nowrap; }
+  .empty { color: var(--muted); font-size: 13px; font-style: italic; padding: 12px; }
+
+  .actions { display: flex; gap: 10px; justify-content: center; margin-top: 26px; flex-wrap: wrap; }
+  .actions button { background: var(--bg-2); color: var(--text); border: 1px solid var(--line); padding: 12px 20px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all .15s; }
+  .actions button:hover { border-color: var(--accent); }
+  .actions button.primary { background: var(--grad); border: none; box-shadow: 0 10px 30px -10px rgba(192,132,252,.6); }
+
+  .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; letter-spacing: .04em; text-transform: uppercase; vertical-align: middle; }
+  .tag.must { background: rgba(239,68,68,.18); color: #fca5a5; }
+  .tag.high { background: rgba(245,158,11,.18); color: #fcd34d; }
+  .tag.nice { background: rgba(129,140,248,.18); color: #c7d2fe; }
+
+  /* Comparison table */
+  .compare { margin-top: 32px; background: rgba(17,24,39,.65); border: 1px solid var(--line); border-radius: 18px; padding: 28px; overflow-x: auto; }
+  .compare h2 { margin: 0 0 18px; font-size: 22px; }
+  .compare table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 600px; }
+  .compare th, .compare td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); }
+  .compare th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+  .compare td.num { font-weight: 700; text-align: right; }
+  .compare tr.total td { border-bottom: none; font-size: 14px; padding-top: 14px; }
+  .compare tr.total td.num { font-size: 18px; background: rgba(129,140,248,.08); border-radius: 6px; }
+  .win { color: var(--green); }
+  .lose { color: var(--red); }
+
+  .fade-in { animation: fade .4s ease both; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .sources { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .sources h4 { margin: 0 0 8px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .sources ul { margin: 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
+  .sources a { color: #a5b4fc; text-decoration: none; }
+
+  footer { margin-top: 40px; text-align: center; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="50%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="badge">Property hunt · 6 Jun 2026</div>
+    <h1 id="heroTitle">Apartment Flag Analyzer</h1>
+    <p>Click a property to switch · scores update against your weighted preferences · "verify" items need confirming at inspection.</p>
+  </div>
+
+  <div class="switcher" id="switcher"></div>
+
+  <div id="propertyView"></div>
+
+  <!-- COMPARISON TABLE -->
+  <div class="compare">
+    <h2>📊 Head-to-head comparison</h2>
+    <table id="compareTable"></table>
+  </div>
+
+  <footer>
+    Scores: 0=hard no · 1=poor · 2=meh / unknown · 3=good · 4=perfect · weights match your /10 priorities.
+  </footer>
+</div>
+
+<script>
+  // ============== PROPERTY DATA ==============
+  const PROPERTIES = [
+    {
+      id: 'kogarah',
+      label: 'Kogarah',
+      address: '13/53–55 Montgomery Street, Kogarah NSW 2217',
+      subtitle: '3rd floor · Double brick · 138 m² · 2 bed / 2 bath / 1 car',
+      price: '$850k – $880k',
+      domainUrl: 'https://www.domain.com.au/13-53-55-montgomery-street-kogarah-nsw-2217-2020882860',
+      mapsUrl: 'https://www.google.com/maps/place/53-55+Montgomery+St,+Kogarah+NSW+2217',
+      meta: [
+        { icon: '🛏', text: '<b>2</b> bed' }, { icon: '🛁', text: '<b>2</b> bath' },
+        { icon: '🚗', text: '<b>1</b> car (basement)' }, { icon: '📐', text: '<b>138 m²</b>' },
+        { icon: '🧱', text: 'Double brick' }, { icon: '🏢', text: 'Floor 3' },
+      ],
+      summary: 'Strong on location & demographics, generous 138 m² floor space, fair price ($850k–$880k = right on Domain estimate). Confirmed: updated kitchen + bathroom, both BIRs, ensuite, full bath, split AC, internal laundry. Main unknowns: aspect, lift, year built.',
+      categories: getCategories('kogarah'),
+    },
+    {
+      id: 'carlton',
+      label: 'Carlton',
+      address: '5/7–9 Shaftesbury Street, Carlton NSW 2218',
+      subtitle: 'Apartment · 110 m² · 2 bed / 1 bath / 1 car (lock-up garage)',
+      price: 'Price guide TBC',
+      domainUrl: 'https://www.domain.com.au/5-7-9-shaftesbury-street-carlton-nsw-2218-2020890381',
+      mapsUrl: 'https://www.google.com/maps/place/7-9+Shaftesbury+St,+Carlton+NSW+2218',
+      meta: [
+        { icon: '🛏', text: '<b>2</b> bed' }, { icon: '🛁', text: '<b>1</b> bath' },
+        { icon: '🚗', text: '<b>1</b> lock-up garage' }, { icon: '📐', text: '<b>110 m²</b>' },
+        { icon: '🪵', text: 'Oak floorboards' }, { icon: '❄️', text: 'Split AC' },
+      ],
+      summary: 'Smaller (110 m² vs 138) and only 1 bathroom — but TRUE lock-up garage (not just a basement space), Mafi European Oak floorboards confirmed, modern kitchen + bath, split AC. Quieter than Kogarah; main supermarket is further. Strata $843/qtr.',
+      categories: getCategories('carlton'),
+    },
+  ];
+
+  // ============== CRITERIA BUILDERS PER PROPERTY ==============
+  function getCategories(propId) {
+    if (propId === 'kogarah') return [
+      {
+        id: 'walk', title: 'Walkability', icon: '🚶',
+        sub: 'Daily life on foot from Montgomery St',
+        items: [
+          { id: 'shops',      label: 'Shops (Coles / Woolies / Aldi)', weight: 9,   priority: 'high', score: 4, reason: '~400 m to Kogarah Town Centre — Woolworths + Aldi inside. 5-min flat walk.' },
+          { id: 'library',    label: 'Library',                         weight: 5.5, priority: 'nice', score: 4, reason: 'Kogarah Library at Belgrave St / Kogarah Town Square — short flat walk.' },
+          { id: 'pharmacy',   label: 'Pharmacy',                        weight: 5,   priority: 'nice', score: 4, reason: 'Multiple pharmacies in town centre + medical precinct around St George Hospital.' },
+          { id: 'vibe',       label: 'Cafes, restaurants, vibe',        weight: 9,   priority: 'high', score: 3, reason: 'Real cluster around Railway Pde / Regent St with diverse cuisines reflecting the demographic mix. Not Newtown vibey but real local life.' },
+          { id: 'playground', label: 'Kids playgrounds',                weight: 10,  priority: 'must', score: 3, reason: 'Kogarah Town Square playground in the same 400 m walk; Moore Reserve a touch further.' },
+          { id: 'station',    label: 'Train station',                   weight: 8,   priority: 'high', score: 4, reason: 'Listing confirms ~400 m to Kogarah Station — 5 min walk.' },
+          { id: 'school',     label: 'Public primary school',           weight: 8,   priority: 'high', score: 3, verify: true, reason: 'Kogarah Public School ~500 m, but 2022 boundary redraw — <a href="https://education.nsw.gov.au/public-schools/going-to-a-public-school/find-a-school" target="_blank">confirm zone</a>.' },
+        ],
+      },
+      {
+        id: 'commute', title: 'Commute', icon: '🚆', sub: 'Real travel from this door',
+        items: [
+          { id: 'central', label: '≤1 h to Central station',          weight: 8, priority: 'high', score: 4, reason: '22 min direct on T4, runs every ~10 min. Well under your ceiling.' },
+          { id: 'amigoss', label: '≤30 min to Amigoss (Glebe)',      weight: 8, priority: 'high', score: 2, reason: 'Off-peak ~20–25 min drive, AM peak 30–45 min via Anzac Bridge. PT ~50 min. Borderline.' },
+        ],
+      },
+      {
+        id: 'property', title: 'The property itself', icon: '🏠', sub: 'Confirmed from listing + still-to-verify',
+        items: [
+          { id: 'size',        label: '≥90–100 m² (excl. garage)',         weight: 8,   priority: 'high', score: 4, reason: '138 m² internal — well above floor.' },
+          { id: 'era',         label: 'Built 1970–1995',                   weight: 10,  priority: 'must', score: 3, verify: true, reason: 'Double brick + basement parking + "well-maintained complex" fits late 70s/80s. Confirm via strata report.' },
+          { id: 'garage',      label: 'Garage included',                   weight: 10,  priority: 'must', score: 3, reason: '"Secure basement car space" — secure parking but a shared-basement spot, not a lock-up garage. Half-step below ideal.' },
+          { id: 'storage',     label: 'Extra storage in garage',           weight: 4,   priority: 'nice', score: 2, verify: true, reason: 'Not mentioned. Ask about a storage cage at inspection.' },
+          { id: 'floor',       label: 'Lower floor if no lift',            weight: 6,   priority: 'nice', score: 4, reason: 'Basement parking → lift almost certainly exists. Confirm but very likely fine.' },
+          { id: 'block',       label: 'Small–medium block (6–20 flats)',   weight: 8,   priority: 'high', score: 2, reason: 'Unit numbers go up to 22+ — slightly above your 6–20 range.' },
+          { id: 'laundry',     label: 'Separate internal laundry',         weight: 10,  priority: 'must', score: 3, verify: true, reason: '"Internal laundry" confirmed. "Separate room" vs Euro cupboard not specified.' },
+          { id: 'north',       label: 'North-facing (living areas)',       weight: 10,  priority: 'must', score: 2, verify: true, reason: 'Aspect not stated. Bring a compass app — this is your highest-weight unknown.' },
+          { id: 'kitchenok',   label: 'Kitchen & bath liveable as-is',     weight: 10,  priority: 'must', score: 4, reason: 'Kitchen: stone benchtops, tiled splashback, gas cooking. Bath: floor-to-ceiling tile, separate tub + shower. Both updated.' },
+          { id: 'kitchen',     label: 'Usable kitchen (bench, dishwasher)',weight: 9,   priority: 'high', score: 3, verify: true, reason: 'Stone benchtops + ample cupboards + gas confirmed. Dishwasher not listed — confirm.' },
+          { id: 'bath',        label: 'Full-sized bath',                   weight: 7,   priority: 'nice', score: 4, reason: 'Confirmed: separate bathtub AND shower in main bathroom.' },
+          { id: 'wardrobes',   label: 'Built-in wardrobes',                weight: 6.5, priority: 'nice', score: 4, reason: 'Confirmed: BIRs in both bedrooms. Master also has ensuite.' },
+          { id: 'linen',       label: 'Linen cupboard',                    weight: 6.5, priority: 'nice', score: 2, verify: true, reason: 'Not specifically mentioned. 138 m² floor plan likely includes one.' },
+          { id: 'ac',          label: 'Split-system AC',                   weight: 6,   priority: 'nice', score: 4, reason: 'Confirmed installed.' },
+          { id: 'floorboards', label: 'Floorboards',                       weight: 7,   priority: 'nice', score: 2, verify: true, reason: 'Not specified. Likely tile + carpet — floorboards would have been called out.' },
+        ],
+      },
+      {
+        id: 'area', title: 'The area & community', icon: '🌳', sub: 'Suburb-level signals (ABS / .id)',
+        items: [
+          { id: 'families', label: 'Young professional families',  weight: 10, priority: 'must', score: 4, reason: '45.7% couple+kids families, median age 35, largest cohort 25–34.' },
+          { id: 'diverse',  label: 'Cultural diversity',            weight: 8,  priority: 'high', score: 4, reason: 'Only 30% English-only. Strong Chinese, Nepali, Bangladeshi, Greek, Macedonian communities.' },
+          { id: 'crime',    label: 'Low crime rate',                weight: 8,  priority: 'high', score: 3, verify: true, reason: 'NSW overall is low. Kogarah is a busy hub (hospital + station) so some opportunistic crime — <a href="https://crimetool.bocsar.nsw.gov.au/" target="_blank">pull BOCSAR report for 2217</a>.' },
+          { id: 'socio',    label: 'Similar socioeconomic background', weight: 7, priority: 'high', score: 3, reason: 'Median HH income ~$99k — middle / upper-middle. Mixed but not a rich enclave.' },
+          { id: 'council',  label: 'Council kids programs',         weight: 6,  priority: 'nice', score: 3, reason: 'Georges River Council: library storytime, school-holiday programs, Hurstville Aquatic. Decent but not exceptional.' },
+        ],
+      },
+    ];
+
+    if (propId === 'carlton') return [
+      {
+        id: 'walk', title: 'Walkability', icon: '🚶',
+        sub: 'Daily life on foot from Shaftesbury St',
+        items: [
+          { id: 'shops',      label: 'Shops (Coles / Woolies / Aldi)', weight: 9,   priority: 'high', score: 2, reason: 'No full supermarket in Carlton itself — Coles Express on Princes Hwy is convenience only. Nearest Woolies + Aldi are in Kogarah Town Centre, ~1.2 km / 15-min walk. Driveable but a chore on foot.' },
+          { id: 'library',    label: 'Library',                         weight: 5.5, priority: 'nice', score: 2, reason: 'No library in Carlton. Closest is Kogarah Library (~1.2 km) or Hurstville Library further out.' },
+          { id: 'pharmacy',   label: 'Pharmacy',                        weight: 5,   priority: 'nice', score: 3, reason: 'A few near Carlton Station strip + plenty in Kogarah Town Centre 1 km away.' },
+          { id: 'vibe',       label: 'Cafes, restaurants, vibe',        weight: 9,   priority: 'high', score: 2, reason: 'Carlton is quiet residential. Small cluster of cafes near the station, but the real vibe is over in Kogarah. Calmer than Kogarah but less life on foot.' },
+          { id: 'playground', label: 'Kids playgrounds',                weight: 10,  priority: 'must', score: 3, verify: true, reason: 'Carlton has Olds Park (4-min walk) and smaller pocket parks. Confirm closest playground equipment suits your kids.' },
+          { id: 'station',    label: 'Train station',                   weight: 8,   priority: 'high', score: 4, reason: '~450 m / 7-min walk to Carlton Station per Shaftesbury St property records.' },
+          { id: 'school',     label: 'Public primary school',           weight: 8,   priority: 'high', score: 3, verify: true, reason: 'Carlton Public School (60 Cameron St, Bexley) is ~600 m. Carlton South PS also nearby — <a href="https://schoolfinder.education.nsw.gov.au/" target="_blank">confirm Shaftesbury St catchment</a>.' },
+        ],
+      },
+      {
+        id: 'commute', title: 'Commute', icon: '🚆', sub: 'Real travel from this door',
+        items: [
+          { id: 'central', label: '≤1 h to Central station',          weight: 8, priority: 'high', score: 4, reason: '~24 min on T4 Illawarra line (one stop further out than Kogarah). Frequent service. Well under your ceiling.' },
+          { id: 'amigoss', label: '≤30 min to Amigoss (Glebe)',      weight: 8, priority: 'high', score: 2, reason: 'Similar to Kogarah — off-peak ~22–27 min drive, AM peak 30–45 min. Borderline.' },
+        ],
+      },
+      {
+        id: 'property', title: 'The property itself', icon: '🏠', sub: 'Confirmed from listing + still-to-verify',
+        items: [
+          { id: 'size',        label: '≥90–100 m² (excl. garage)',         weight: 8,   priority: 'high', score: 3, reason: '110 m² — above your floor but a notable 28 m² less than the Kogarah unit.' },
+          { id: 'era',         label: 'Built 1970–1995',                   weight: 10,  priority: 'must', score: 2, verify: true, reason: 'Year built not stated. "Contemporary" finish suggests recent reno but the building itself could be 70s–2000s — confirm via strata.' },
+          { id: 'garage',      label: 'Garage included',                   weight: 10,  priority: 'must', score: 4, reason: '"Lock-up garage" confirmed — proper enclosed garage, not just a basement bay. Better than Kogarah on this front.' },
+          { id: 'storage',     label: 'Extra storage in garage',           weight: 4,   priority: 'nice', score: 3, reason: 'Lock-up garages typically allow extra storage along the walls — better than a basement bay. Confirm dimensions.' },
+          { id: 'floor',       label: 'Lower floor if no lift',            weight: 6,   priority: 'nice', score: 3, verify: true, reason: 'Floor level not specified. Building at 7–9 Shaftesbury looks 3-storey walk-up — confirm which floor #5 sits on.' },
+          { id: 'block',       label: 'Small–medium block (6–20 flats)',   weight: 8,   priority: 'high', score: 4, verify: true, reason: 'Address 7–9 Shaftesbury (two-lot combined) is typical small-block — likely 8–14 units. Confirm exact count.' },
+          { id: 'laundry',     label: 'Separate internal laundry',         weight: 10,  priority: 'must', score: 3, verify: true, reason: '"Internal functional laundry" confirmed. Separate room vs Euro cupboard not specified.' },
+          { id: 'north',       label: 'North-facing (living areas)',       weight: 10,  priority: 'must', score: 2, verify: true, reason: 'Aspect not stated. Shaftesbury St runs N-S so units face E or W — confirm at inspection (this is critical given the weight).' },
+          { id: 'kitchenok',   label: 'Kitchen & bath liveable as-is',     weight: 10,  priority: 'must', score: 4, reason: 'Description: "contemporary kitchen" + "modern main bathroom" + freshly painted + downlights. Recently refreshed — no urgent reno.' },
+          { id: 'kitchen',     label: 'Usable kitchen (bench, dishwasher)',weight: 9,   priority: 'high', score: 3, verify: true, reason: '"Contemporary kitchen" — bench space + dishwasher inclusion not detailed. Confirm at inspection.' },
+          { id: 'bath',        label: 'Full-sized bath',                   weight: 7,   priority: 'nice', score: 2, verify: true, reason: 'Only 1 bathroom in the unit — modern but tub vs shower-only not specified. Important to confirm for kids.' },
+          { id: 'wardrobes',   label: 'Built-in wardrobes',                weight: 6.5, priority: 'nice', score: 2, verify: true, reason: 'Not mentioned in description. Check floor plan / photos.' },
+          { id: 'linen',       label: 'Linen cupboard',                    weight: 6.5, priority: 'nice', score: 2, verify: true, reason: 'Not specified. Confirm on floor plan.' },
+          { id: 'ac',          label: 'Split-system AC',                   weight: 6,   priority: 'nice', score: 4, reason: 'Confirmed installed.' },
+          { id: 'floorboards', label: 'Floorboards',                       weight: 7,   priority: 'nice', score: 4, reason: '"Mafi European Oak timber flooring" confirmed throughout. Premium choice. Wins over Kogarah here.' },
+        ],
+      },
+      {
+        id: 'area', title: 'The area & community', icon: '🌳', sub: 'Suburb-level signals (ABS / .id)',
+        items: [
+          { id: 'families', label: 'Young professional families',  weight: 10, priority: 'must', score: 4, reason: 'Median age 38, family-focused, 30-39 is dominant cohort. Carlton attracts couples buying their first family home.' },
+          { id: 'diverse',  label: 'Cultural diversity',            weight: 8,  priority: 'high', score: 4, reason: '36% English-only. Top backgrounds Chinese, Nepali, Macedonian, Greek, Filipino — genuine mix, slightly less diverse than Kogarah but still strong.' },
+          { id: 'crime',    label: 'Low crime rate',                weight: 8,  priority: 'high', score: 4, reason: 'Carlton is quieter / more residential than Kogarah (no hospital precinct, smaller commercial area) — typically lower opportunistic crime. <a href="https://crimetool.bocsar.nsw.gov.au/" target="_blank">Verify on BOCSAR</a>.' },
+          { id: 'socio',    label: 'Similar socioeconomic background', weight: 7, priority: 'high', score: 4, reason: 'Carlton skews to practical, middle-income families. "Value without sacrificing livability" demographic — you would fit cleanly.' },
+          { id: 'council',  label: 'Council kids programs',         weight: 6,  priority: 'nice', score: 3, reason: 'Same Georges River Council as Kogarah — same library + school-holiday + aquatic programs.' },
+        ],
+      },
+    ];
+
+    return [];
+  }
+
+  // ============== STATE ==============
+  const STORAGE_KEY = 'propertyAnalyzer.v4';
+  function defaultScoresFor(prop) {
+    const s = {};
+    prop.categories.forEach(cat => cat.items.forEach(item => { s[`${cat.id}.${item.id}`] = item.score; }));
+    return s;
+  }
+  function defaultState() {
+    const overrides = {};
+    PROPERTIES.forEach(p => overrides[p.id] = defaultScoresFor(p));
+    return { active: PROPERTIES[PROPERTIES.length - 1].id, overrides };
+  }
+  let state = loadState() || defaultState();
+  // make sure new properties get default overrides
+  PROPERTIES.forEach(p => { if (!state.overrides[p.id]) state.overrides[p.id] = defaultScoresFor(p); });
+
+  function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function loadState() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; } }
+
+  function activeProp() { return PROPERTIES.find(p => p.id === state.active) || PROPERTIES[0]; }
+  function scoreFor(propId, key) { return state.overrides[propId]?.[key]; }
+
+  // ============== AGGREGATE COMPUTATIONS ==============
+  function propTotals(prop) {
+    let earned = 0, possible = 0;
+    const catTotals = {};
+    prop.categories.forEach(cat => {
+      let cEarn = 0, cPoss = 0;
+      cat.items.forEach(item => {
+        const v = scoreFor(prop.id, `${cat.id}.${item.id}`);
+        cPoss += item.weight;
+        if (v !== undefined) cEarn += (v / 4) * item.weight;
+      });
+      catTotals[cat.id] = { earned: cEarn, possible: cPoss };
+      earned += cEarn; possible += cPoss;
+    });
+    return { earned, possible, pct: possible ? earned / possible * 100 : 0, catTotals };
+  }
+
+  // ============== RENDER ==============
+  function renderSwitcher() {
+    const el = document.getElementById('switcher');
+    el.innerHTML = '';
+    PROPERTIES.forEach(p => {
+      const t = propTotals(p);
+      const chip = document.createElement('div');
+      chip.className = 'prop-chip' + (p.id === state.active ? ' active' : '');
+      chip.innerHTML = `
+        <span class="pc-name">${p.label}</span>
+        <span class="pc-meta">${p.subtitle.split('·')[0].trim()} · ${p.price}</span>
+        <span class="pc-score">${t.pct.toFixed(0)}%</span>
+      `;
+      chip.addEventListener('click', () => { state.active = p.id; saveState(); renderAll(); });
+      el.appendChild(chip);
+    });
+  }
+
+  function renderProperty() {
+    const prop = activeProp();
+    const t = propTotals(prop);
+    document.getElementById('heroTitle').textContent = `${prop.label} unit — ${(t.pct/10).toFixed(1)} / 10 overall`;
+
+    const view = document.getElementById('propertyView');
+    view.innerHTML = `
+      <div class="listing fade-in">
+        <div>
+          <h2>${prop.address}</h2>
+          <div class="addr">${prop.subtitle}</div>
+          <div class="price">${prop.price}</div>
+          <div class="listing-meta">
+            ${prop.meta.map(m => `<div class="meta-pill">${m.icon} ${m.text}</div>`).join('')}
+          </div>
+        </div>
+        <div class="listing-actions">
+          <a class="primary" href="${prop.domainUrl}" target="_blank">View on Domain →</a>
+          <a href="${prop.mapsUrl}" target="_blank">📍 Open in Google Maps</a>
+          <a href="https://www.google.com/maps/dir/${encodeURIComponent(prop.address)}/Amigoss+Bilingual+Glebe/data=!4m2!4m1!3e0" target="_blank">🚗 Drive to Amigoss</a>
+          <a href="https://www.google.com/maps/dir/${encodeURIComponent(prop.address)}/Central+Station+Sydney/data=!4m2!4m1!3e3" target="_blank">🚆 Train to Central</a>
+        </div>
+      </div>
+
+      <div class="analysis-note">
+        <span class="ico">ℹ️</span>
+        <div><b>Auto-analysis summary:</b> ${prop.summary}</div>
+      </div>
+
+      <div class="score-bar">
+        <div class="score-main">
+          <div class="ring">
+            <svg width="80" height="80">
+              <circle class="track" cx="40" cy="40" r="34"></circle>
+              <circle class="progress" id="ringProgress" cx="40" cy="40" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"></circle>
+            </svg>
+            <div class="label">
+              <span class="num" id="totalNum">0</span>
+              <span class="pct" id="totalPct">0%</span>
+            </div>
+          </div>
+          <div class="verdict">
+            <h3 id="verdictTitle">Calculating…</h3>
+            <p id="verdictBody">—</p>
+          </div>
+        </div>
+        ${prop.categories.map(c => `
+          <div class="cat-mini"><span class="ttl">${c.title}</span><span class="val" id="catVal-${c.id}">—</span><div class="bar"><i id="catBar-${c.id}"></i></div></div>
+        `).join('')}
+      </div>
+
+      <div class="cat-grid" id="catGrid"></div>
+
+      <div class="summary">
+        <h2>🚩 Flag summary</h2>
+        <div class="flags-grid">
+          <div class="flag-col green"><h4>✅ Green flags</h4><ul class="flag-list" id="greenFlags"></ul></div>
+          <div class="flag-col red"><h4>🚩 Red flags</h4><ul class="flag-list" id="redFlags"></ul></div>
+          <div class="flag-col verify"><h4>🔍 Verify at inspection</h4><ul class="flag-list" id="verifyFlags"></ul></div>
+        </div>
+        <div class="actions">
+          <button onclick="resetActive()">Reset scores</button>
+          <button onclick="exportJSON()">Export JSON</button>
+          <button class="primary" onclick="window.print()">Print / save PDF</button>
+        </div>
+      </div>
+    `;
+    renderCategories();
+    refreshAllScores();
+  }
+
+  function renderCategories() {
+    const prop = activeProp();
+    const grid = document.getElementById('catGrid');
+    grid.innerHTML = '';
+    prop.categories.forEach(cat => {
+      const total = cat.items.reduce((a,b) => a + b.weight, 0);
+      const catEl = document.createElement('div');
+      catEl.className = 'cat fade-in';
+      catEl.innerHTML = `
+        <div class="cat-head">
+          <div class="cat-icon">${cat.icon}</div>
+          <div><h3 class="cat-title">${cat.title}</h3><div class="cat-sub">${cat.sub}</div></div>
+          <div class="cat-progress" id="catScore-${cat.id}">0 / ${total}</div>
+        </div>
+        <div id="critList-${cat.id}"></div>
+      `;
+      const list = catEl.querySelector(`#critList-${cat.id}`);
+      cat.items.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'crit';
+        const verifyChip = item.verify ? `<span class="verdict-chip vc-verify">verify</span>` : '';
+        row.innerHTML = `
+          <div class="crit-head">
+            <div class="crit-name">${item.label} <span class="tag ${item.priority}">${item.priority}</span></div>
+            <span class="weight-chip">${item.weight}/10</span>
+            ${verifyChip}
+          </div>
+          <div class="reason">${item.reason}</div>
+          <div class="toggle-row" data-cat="${cat.id}" data-item="${item.id}">
+            <button data-state="0">— no</button>
+            <button data-state="1">poor</button>
+            <button data-state="2">meh</button>
+            <button data-state="3">good</button>
+            <button data-state="4">perfect</button>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+      grid.appendChild(catEl);
+    });
+    bindToggles();
+  }
+
+  function bindToggles() {
+    const prop = activeProp();
+    document.querySelectorAll('.toggle-row').forEach(row => {
+      const catId = row.dataset.cat;
+      const itemId = row.dataset.item;
+      const key = `${catId}.${itemId}`;
+      const saved = scoreFor(prop.id, key);
+      row.querySelectorAll('button').forEach(btn => {
+        if (saved !== undefined && Number(btn.dataset.state) === saved) btn.classList.add('active');
+        btn.addEventListener('click', () => {
+          const newVal = Number(btn.dataset.state);
+          if (state.overrides[prop.id][key] === newVal) delete state.overrides[prop.id][key];
+          else state.overrides[prop.id][key] = newVal;
+          row.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+          if (state.overrides[prop.id][key] !== undefined) btn.classList.add('active');
+          saveState();
+          refreshAllScores();
+          renderSwitcher();
+          renderCompare();
+        });
+      });
+    });
+  }
+
+  function refreshAllScores() {
+    const prop = activeProp();
+    const t = propTotals(prop);
+
+    prop.categories.forEach(cat => {
+      const ct = t.catTotals[cat.id];
+      const elScore = document.getElementById(`catScore-${cat.id}`);
+      if (elScore) elScore.textContent = `${ct.earned.toFixed(1)} / ${ct.possible}`;
+      const pct = ct.possible ? ct.earned / ct.possible * 100 : 0;
+      const valEl = document.getElementById(`catVal-${cat.id}`);
+      const barEl = document.getElementById(`catBar-${cat.id}`);
+      if (valEl) valEl.textContent = `${pct.toFixed(0)}%`;
+      if (barEl) barEl.style.width = pct + '%';
+    });
+
+    document.getElementById('totalNum').textContent = t.earned.toFixed(0);
+    document.getElementById('totalPct').textContent = t.pct.toFixed(0) + '%';
+    const C = 2 * Math.PI * 34;
+    document.getElementById('ringProgress').style.strokeDasharray = C;
+    document.getElementById('ringProgress').style.strokeDashoffset = C - (C * t.pct / 100);
+
+    const v = document.getElementById('verdictTitle');
+    const vb = document.getElementById('verdictBody');
+    if (t.pct >= 80) { v.textContent = '🟢 Strong match'; vb.textContent = 'Book the inspection — this is a real contender.'; }
+    else if (t.pct >= 65) { v.textContent = '🟡 Worth investigating'; vb.textContent = 'Solid contender — review the red flags below.'; }
+    else if (t.pct >= 50) { v.textContent = '🟠 Marginal'; vb.textContent = 'Several misses. Worth it only at the right price.'; }
+    else { v.textContent = '🔴 Probably skip'; vb.textContent = "Doesn't match your weighted priorities."; }
+
+    refreshFlags();
+    document.getElementById('heroTitle').textContent = `${prop.label} unit — ${(t.pct/10).toFixed(1)} / 10 overall`;
+  }
+
+  function refreshFlags() {
+    const prop = activeProp();
+    const greens = [], reds = [], verifies = [];
+    prop.categories.forEach(cat => {
+      cat.items.forEach(item => {
+        const key = `${cat.id}.${item.id}`;
+        const v = scoreFor(prop.id, key);
+        if (v === undefined) return;
+        const row = { text: item.label, weight: item.weight, score: v, priority: item.priority };
+        if (item.verify) verifies.push(row);
+        else if (v >= 3) greens.push(row);
+        else if (v <= 1) reds.push(row);
+        else if (v === 2 && item.priority !== 'nice') reds.push(row);
+      });
+    });
+    [greens, reds, verifies].forEach(arr => arr.sort((a,b) => b.weight - a.weight));
+    renderFlagList('greenFlags', greens);
+    renderFlagList('redFlags', reds);
+    renderFlagList('verifyFlags', verifies);
+  }
+  function renderFlagList(elId, arr) {
+    const el = document.getElementById(elId);
+    if (!arr.length) { el.innerHTML = `<li class="empty">Nothing here.</li>`; return; }
+    el.innerHTML = arr.map(f => {
+      const impact = f.weight >= 9 ? 'critical' : f.weight >= 7 ? 'high' : f.weight >= 5 ? 'medium' : 'minor';
+      return `<li><span>${f.text}</span><span class="impact">${impact} · ${f.weight}/10</span></li>`;
+    }).join('');
+  }
+
+  // ============== COMPARISON TABLE ==============
+  function renderCompare() {
+    // build a flat list of every unique item across properties (using kogarah ordering as canonical)
+    const canonical = PROPERTIES[0].categories;
+    const tbl = document.getElementById('compareTable');
+    let html = `<thead><tr><th>Criterion</th><th>Wt</th>${PROPERTIES.map(p => `<th class="num">${p.label}</th>`).join('')}</tr></thead><tbody>`;
+    canonical.forEach(cat => {
+      html += `<tr><td colspan="${2 + PROPERTIES.length}" style="color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.08em; padding-top:14px;">${cat.icon} ${cat.title}</td></tr>`;
+      cat.items.forEach(item => {
+        const key = `${cat.id}.${item.id}`;
+        const cells = PROPERTIES.map(p => {
+          const v = scoreFor(p.id, key);
+          if (v === undefined) return '<td class="num">—</td>';
+          // determine winner by comparing across properties
+          const others = PROPERTIES.map(o => scoreFor(o.id, key)).filter(x => x !== undefined);
+          const max = Math.max(...others), min = Math.min(...others);
+          let cls = '';
+          if (max !== min) {
+            if (v === max) cls = 'win';
+            else if (v === min) cls = 'lose';
+          }
+          return `<td class="num ${cls}">${v}/4</td>`;
+        }).join('');
+        html += `<tr><td>${item.label}</td><td class="num">${item.weight}</td>${cells}</tr>`;
+      });
+    });
+    // totals row
+    html += `<tr class="total"><td><b>Overall</b></td><td></td>`;
+    PROPERTIES.forEach(p => {
+      const t = propTotals(p);
+      html += `<td class="num">${t.pct.toFixed(0)}%</td>`;
+    });
+    html += `</tr></tbody>`;
+    tbl.innerHTML = html;
+  }
+
+  function resetActive() {
+    const prop = activeProp();
+    if (!confirm(`Reset scores for ${prop.label}?`)) return;
+    state.overrides[prop.id] = defaultScoresFor(prop);
+    saveState();
+    renderAll();
+  }
+
+  function exportJSON() {
+    const data = {
+      exportedAt: new Date().toISOString().split('T')[0],
+      properties: PROPERTIES.map(p => ({
+        id: p.id, address: p.address, price: p.price,
+        totals: propTotals(p),
+        scores: state.overrides[p.id],
+      })),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `property-comparison-${Date.now()}.json`;
+    a.click();
+  }
+
+  function renderAll() {
+    renderSwitcher();
+    renderProperty();
+    renderCompare();
+  }
+  renderAll();
+</script>
+
+</body>
+</html>
